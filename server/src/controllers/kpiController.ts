@@ -70,8 +70,6 @@ export const getKPIs = async (req: Request, res: Response) => {
 		];
 
 		const dauTrendRaw = await GameEvent.aggregate(dauPipeline as any);
-
-		// 🔹 Fill missing days with zero values
 		const dauMap: Record<string, number> = {};
 		for (const entry of dauTrendRaw) {
 			dauMap[entry.date] = entry.count;
@@ -81,7 +79,7 @@ export const getKPIs = async (req: Request, res: Response) => {
 		for (let i = 29; i >= 0; i--) {
 			const d = new Date(now);
 			d.setDate(now.getDate() - i);
-			const key = d.toISOString().slice(0, 10); // YYYY-MM-DD
+			const key = d.toISOString().slice(0, 10);
 			dauTrend.push({
 				date: key,
 				count: dauMap[key] || 0,

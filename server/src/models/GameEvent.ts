@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 
+// Schema to define an event in a Slot/Arcade game. 'eventId' is the primary key.
 const gameEventSchema = new mongoose.Schema(
 	{
 		eventId: { type: String, unique: true, required: true },
@@ -20,6 +21,7 @@ const gameEventSchema = new mongoose.Schema(
 	{ timestamps: true }
 );
 
+// Creating Index for the 3 fields
 gameEventSchema.index({ ts: 1 });
 gameEventSchema.index({ gameId: 1 });
 gameEventSchema.index({ terminalId: 1 });
