@@ -3,11 +3,24 @@ import { GameEvent } from "../models/GameEvent.js";
 
 export const getKPIs = async (req: Request, res: Response) => {
 	try {
+		const { gameId, terminalId, startTime, endTime } = req.query;
+		const filter: any = {};
+
+		if (gameId) filter.gameId = gameId;
+		if (terminalId) filter.terminalId = terminalId;
+
+		if (startTime || endTime) {
+			filter.ts = {};
+			if (startTime) filter.ts.$gte = new Date(startTime as string);
+			if (endTime) filter.ts.$lte = new Date(endTime as string);
+		}
+
 		// Total spins
-		const spins = await GameEvent.countDocuments({ type: "spin" });
+		const spins = await GameEvent.countDocuments({ type: "spin", ...filter });
 
 		// Aggregate total bets and total wins
 		const totals = await GameEvent.aggregate([
+			{ $match: filter },
 			{
 				$group: {
 					_id: null,
@@ -33,10 +46,7 @@ export const getKPIs = async (req: Request, res: Response) => {
 
 		const dauPipeline = [
 			{
-				$match: {
-					type: "spin",
-					ts: { $gte: startDate },
-				},
+				$match: { ...filter, type: "spin", ts: { $gte: startDate } },
 			},
 			{
 				$group: {
@@ -88,6 +98,7 @@ export const getKPIs = async (req: Request, res: Response) => {
 
 		// Top Games (using total bet)
 		const topGames = await GameEvent.aggregate([
+			{ $match: filter },
 			{
 				$group: {
 					_id: "$gameId",
@@ -102,6 +113,7 @@ export const getKPIs = async (req: Request, res: Response) => {
 
 		// Top Terminals (using total bet)
 		const topTerminals = await GameEvent.aggregate([
+			{ $match: filter },
 			{
 				$group: {
 					_id: "$terminalId",
@@ -130,8 +142,14 @@ export const getKPIs = async (req: Request, res: Response) => {
 };
 
 // Get Hourly Trends (last 24 hours)
-export const getHourlyTrends = async (_req: Request, res: Response) => {
+export const getHourlyTrends = async (req: Request, res: Response) => {
 	try {
+		const { gameId, terminalId } = req.query;
+		const filter: any = {};
+
+		if (gameId) filter.gameId = gameId;
+		if (terminalId) filter.terminalId = terminalId;
+
 		const now = new Date();
 		const yesterday = new Date(now);
 		yesterday.setHours(now.getHours() - 24);
@@ -139,6 +157,7 @@ export const getHourlyTrends = async (_req: Request, res: Response) => {
 		const trends = await GameEvent.aggregate([
 			{
 				$match: {
+					...filter,
 					ts: { $gte: yesterday, $lte: now },
 				},
 			},
