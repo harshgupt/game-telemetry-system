@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../api";
 
+// Each interface defines a strongly typed format for each specific data field
 interface Filters {
 	gameId: string;
 	terminalId: string;
@@ -21,6 +22,7 @@ interface GameEvent {
 	win: number;
 }
 
+// RecentEventsTable displays the 10 most recent events in the database in a table
 export default function RecentEventsTable({ filters }: { filters: Filters }) {
 	const [events, setEvents] = useState<GameEvent[]>([]);
 
@@ -35,38 +37,132 @@ export default function RecentEventsTable({ filters }: { filters: Filters }) {
 	}, [filters]);
 
 	if (!events.length)
-		return <p className="text-gray-500 italic">No recent events found.</p>;
+		return (
+			<p
+				style={{
+					textAlign: "center",
+					color: "var(--color-secondary)",
+					fontStyle: "italic",
+					marginTop: "1rem",
+				}}>
+				No recent events found.
+			</p>
+		);
 
 	return (
-		<div className="bg-white p-4 rounded-lg shadow">
-			<h2 className="text-lg font-semibold mb-4">Recent Game Events</h2>
-			<div className="overflow-x-auto">
-				<table className="min-w-full text-sm text-left border border-gray-200 rounded-lg">
-					<thead className="bg-gray-100 text-gray-700 uppercase">
+		<div
+			style={{
+				backgroundColor: "white",
+				padding: "1.5rem",
+				borderRadius: "12px",
+				boxShadow: "0 4px 16px rgba(0, 0, 0, 0.05)",
+				width: "100%",
+			}}>
+			<h2
+				style={{
+					fontSize: "1.25rem",
+					fontWeight: 700,
+					color: "var(--color-accent-dark)",
+					marginBottom: "1rem",
+					textAlign: "center",
+				}}>
+				Recent Game Events
+			</h2>
+			<div style={{ overflowX: "auto" }}>
+				<table
+					style={{
+						width: "100%",
+						borderCollapse: "collapse",
+						border: "1px solid rgba(0,0,0,0.05)",
+						borderRadius: "10px",
+						overflow: "hidden",
+					}}>
+					<thead
+						style={{
+							backgroundColor: "var(--color-accent-light)",
+							color: "white",
+							textTransform: "uppercase",
+							fontSize: "0.85rem",
+							letterSpacing: "0.5px",
+						}}>
 						<tr>
-							<th className="px-4 py-2">Event ID</th>
-							<th className="px-4 py-2">Type</th>
-							<th className="px-4 py-2">Game</th>
-							<th className="px-4 py-2">Terminal</th>
-							<th className="px-4 py-2">Player</th>
-							<th className="px-4 py-2">Bet</th>
-							<th className="px-4 py-2">Win</th>
-							<th className="px-4 py-2">Time</th>
+							<th style={{ padding: "0.75rem 1rem", textAlign: "left" }}>
+								Event ID
+							</th>
+							<th style={{ padding: "0.75rem 1rem", textAlign: "left" }}>
+								Type
+							</th>
+							<th style={{ padding: "0.75rem 1rem", textAlign: "left" }}>
+								Game
+							</th>
+							<th style={{ padding: "0.75rem 1rem", textAlign: "left" }}>
+								Terminal
+							</th>
+							<th style={{ padding: "0.75rem 1rem", textAlign: "left" }}>
+								Player
+							</th>
+							<th style={{ padding: "0.75rem 1rem", textAlign: "center" }}>
+								Bet ($)
+							</th>
+							<th style={{ padding: "0.75rem 1rem", textAlign: "center" }}>
+								Winnings ($)
+							</th>
+							<th style={{ padding: "0.75rem 1rem", textAlign: "center" }}>
+								Time
+							</th>
 						</tr>
 					</thead>
 					<tbody>
-						{events.map((e) => (
+						{events.map((e, i) => (
 							<tr
 								key={e.eventId}
-								className="border-t hover:bg-gray-50 transition-colors">
-								<td className="px-4 py-2">{e.eventId}</td>
-								<td className="px-4 py-2">{e.type}</td>
-								<td className="px-4 py-2">{e.gameId}</td>
-								<td className="px-4 py-2">{e.terminalId}</td>
-								<td className="px-4 py-2">{e.playerId}</td>
-								<td className="px-4 py-2">{e.bet}</td>
-								<td className="px-4 py-2">{e.win}</td>
-								<td className="px-4 py-2">{new Date(e.ts).toLocaleString()}</td>
+								style={{
+									backgroundColor: i % 2 === 0 ? "#fafafa" : "white",
+									transition: "background 0.2s ease",
+								}}
+								onMouseEnter={(el) =>
+									(el.currentTarget.style.backgroundColor =
+										"rgba(128,173,155,0.15)")
+								}
+								onMouseLeave={(el) =>
+									(el.currentTarget.style.backgroundColor =
+										i % 2 === 0 ? "#fafafa" : "white")
+								}>
+								<td style={{ padding: "0.75rem 1rem" }}>{e.eventId}</td>
+								<td style={{ padding: "0.75rem 1rem" }}>{e.type}</td>
+								<td style={{ padding: "0.75rem 1rem" }}>{e.gameId}</td>
+								<td style={{ padding: "0.75rem 1rem" }}>{e.terminalId}</td>
+								<td style={{ padding: "0.75rem 1rem" }}>{e.playerId}</td>
+								<td
+									style={{
+										padding: "0.75rem 1rem",
+										textAlign: "center",
+										fontWeight: 500,
+									}}>
+									${e.bet}
+								</td>
+								<td
+									style={{
+										padding: "0.75rem 1rem",
+										textAlign: "center",
+										fontWeight: 500,
+									}}>
+									${e.win}
+								</td>
+								<td
+									style={{
+										padding: "0.75rem 1rem",
+										textAlign: "center",
+										color: "var(--color-secondary)",
+									}}>
+									{new Date(e.ts).toLocaleString("en-US", {
+										day: "2-digit",
+										month: "short",
+										year: "numeric",
+										hour: "2-digit",
+										minute: "2-digit",
+									})}
+								</td>
 							</tr>
 						))}
 					</tbody>
