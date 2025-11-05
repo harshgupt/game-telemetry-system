@@ -1,174 +1,156 @@
 import { useEffect, useState } from "react";
 import api from "../api";
 import {
-	ResponsiveContainer,
 	LineChart,
 	Line,
 	XAxis,
 	YAxis,
 	Tooltip,
+	Legend,
+	ResponsiveContainer,
 	CartesianGrid,
 	BarChart,
 	Bar,
-	Legend,
 } from "recharts";
 
-type HourlyPoint = {
+interface Filters {
+	gameId: string;
+	terminalId: string;
+	startTime: string;
+	endTime: string;
+}
+
+interface HourlyData {
 	hour: number;
 	date: string;
 	totalSpins: number;
 	totalBet: number;
 	totalWin: number;
-};
+}
 
-type TopGame = {
+interface TopGame {
 	_id: string;
 	totalBet: number;
 	totalWin: number;
-	spins?: number;
-};
+	spins: number;
+}
 
-export default function ChartBoard() {
-	const [hourly, setHourly] = useState<HourlyPoint[] | null>(null);
-	const [topGames, setTopGames] = useState<TopGame[] | null>(null);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
+interface TopTerminal {
+	_id: string;
+	totalBet: number;
+	totalWin: number;
+}
+
+export default function ChartBoard({ filters }: { filters: Filters }) {
+	const [hourlyData, setHourlyData] = useState<HourlyData[]>([]);
+	const [topGames, setTopGames] = useState<TopGame[]>([]);
+	const [topTerminals, setTopTerminals] = useState<TopTerminal[]>([]);
 
 	useEffect(() => {
-		let cancelled = false;
+		const params = new URLSearchParams();
+		if (filters.gameId) params.append("gameId", filters.gameId);
+		if (filters.terminalId) params.append("terminalId", filters.terminalId);
 
-		async function fetchData() {
-			try {
-				setLoading(true);
+		// Fetch hourly trends
+		api
+			.get(`/kpis/hourly?${params.toString()}`)
+			.then((res) => setHourlyData(res.data));
 
-				const [hourRes, kpiRes] = await Promise.all([
-					api.get<HourlyPoint[]>("/kpis/hourly"),
-					api.get("/kpis"),
-				]);
-
-				if (cancelled) return;
-
-				const hourlyData = hourRes.data.map((h) => ({
-					...h,
-					date:
-						typeof h.date === "string"
-							? h.date
-							: new Date(h.date).toISOString(),
-				}));
-
-				setHourly(hourlyData);
-
-				const topGamesData: TopGame[] = kpiRes.data.topGames || [];
-				setTopGames(topGamesData);
-			} catch (err) {
-				console.error("Error fetching chart data: ", err);
-				if (!cancelled) setError("Failed to load chart data");
-			} finally {
-				if (!cancelled) setLoading(false);
-			}
-		}
-
-		fetchData();
-		return () => {
-			cancelled = true;
-		};
-	}, []);
-
-	if (loading)
-		return (
-			<div className="bg-white rounded-2xl shadow-md p-6 mb-6">
-				<h2 className="text-xl font-semibold text-gray-800 mb-4">
-					Charts & Trends
-				</h2>
-				<div className="text-gray-500">Loading charts...</div>
-			</div>
-		);
-
-	if (error)
-		return (
-			<div className="bg-white rounded-2xl shadow-md p-6 mb-6">
-				<h2 className="text-xl font-semibold text-gray-800 mb-4">
-					Charts & Trends
-				</h2>
-				<div className="text-red-500">{error}</div>
-			</div>
-		);
-
-	const lineData =
-		hourly?.map((h) => ({
-			label: new Date(h.date).toLocaleTimeString([], {
-				hour: "2-digit",
-				minute: "2-digit",
-			}),
-			spins: h.totalSpins,
-			bet: Number(h.totalBet),
-			win: Number(h.totalWin),
-		})) || [];
-
-	const barData =
-		topGames?.map((g) => ({
-			game: g._id,
-			totalBet: g.totalBet,
-			totalWin: g.totalWin,
-			spins: g.spins ?? 0,
-		})) || [];
+		// Fetch top games & terminals
+		api.get(`/kpis?${params.toString()}`).then((res) => {
+			setTopGames(res.data.topGames || []);
+			setTopTerminals(res.data.topTerminals || []);
+		});
+	}, [filters]);
 
 	return (
-		<div className="bg-white rounded-2xl shadow-md p-6 mb-6">
-			<h2 className="text-xl font-semibold text-gray-800 mb-4">
-				Charts & Trends
-			</h2>
-
-			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-				{/* Hourly Line Chart */}
-				<div className="bg-gray-50 rounded-xl p-4 border flex flex-col min-h-[300px]">
-					<h3 className="text-sm font-medium text-gray-700 mb-2">
-						Hourly Spins (last 24h)
-					</h3>
-					{lineData.length === 0 ? (
-						<div className="text-gray-400">No hourly data available</div>
-					) : (
-						<ResponsiveContainer width="100%" height={250} minWidth={0}>
-							<LineChart data={lineData}>
+		<div className="grid grid-cols-1 gap-6 mb-6">
+			{/* Hourly Trends */}
+			<div className="bg-white p-4 rounded-lg shadow w-full">
+				<h2 className="text-xl font-semibold text-gray-800 mb-4">
+					Hourly Trends (Last 24 Hours)
+				</h2>
+				<div className="w-full" style={{ minHeight: "360px", height: "360px" }}>
+					{hourlyData.length > 0 ? (
+						<ResponsiveContainer width="100%" height={350}>
+							<LineChart data={hourlyData}>
 								<CartesianGrid strokeDasharray="3 3" />
-								<XAxis
-									dataKey="label"
-									minTickGap={20}
-									tick={{ fontSize: 12 }}
-								/>
-								<YAxis allowDecimals={false} />
+								<XAxis dataKey="hour" />
+								<YAxis />
 								<Tooltip />
+								<Legend />
 								<Line
 									type="monotone"
-									dataKey="spins"
-									stroke="#2563eb"
+									dataKey="totalSpins"
+									stroke="#3b82f6"
 									strokeWidth={2}
-									dot={false}
+									name="Spins"
+								/>
+								<Line
+									type="monotone"
+									dataKey="totalBet"
+									stroke="#10b981"
+									strokeWidth={2}
+									name="Total Bet"
+								/>
+								<Line
+									type="monotone"
+									dataKey="totalWin"
+									stroke="#f59e0b"
+									strokeWidth={2}
+									name="Total Win"
 								/>
 							</LineChart>
 						</ResponsiveContainer>
+					) : (
+						<p className="text-gray-500 text-center mt-10">
+							No hourly data available.
+						</p>
+					)}
+				</div>
+			</div>
+
+			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+				{/* Top Games */}
+				<div className="bg-white p-4 rounded-lg shadow w-full h-80">
+					<h2 className="text-lg font-semibold mb-3 text-gray-800">
+						Top Games
+					</h2>
+					{topGames.length > 0 ? (
+						<ResponsiveContainer width="100%" height={250}>
+							<BarChart data={topGames}>
+								<CartesianGrid strokeDasharray="3 3" />
+								<XAxis dataKey="_id" />
+								<YAxis />
+								<Tooltip />
+								<Bar dataKey="totalBet" fill="#3b82f6" name="Total Bet" />
+							</BarChart>
+						</ResponsiveContainer>
+					) : (
+						<p className="text-gray-500 text-center mt-10">
+							No top games data.
+						</p>
 					)}
 				</div>
 
-				{/* Top Games Bar Chart */}
-				<div className="bg-gray-50 rounded-xl p-4 border flex flex-col min-h-[300px]">
-					<h3 className="text-sm font-medium text-gray-700 mb-2">
-						Top Games (by total bet)
-					</h3>
-					{barData.length === 0 ? (
-						<div className="text-gray-400">No top games data available</div>
-					) : (
-						<ResponsiveContainer width="100%" height={250} minWidth={0}>
-							<BarChart data={barData} layout="vertical" margin={{ left: 40 }}>
+				<div className="bg-white p-4 rounded-lg shadow w-full h-80">
+					<h2 className="text-lg font-semibold mb-3 text-gray-800">
+						Top Terminals
+					</h2>
+					{topTerminals.length > 0 ? (
+						<ResponsiveContainer width="100%" height={250}>
+							<BarChart data={topTerminals}>
 								<CartesianGrid strokeDasharray="3 3" />
-								<XAxis type="number" />
-								<YAxis dataKey="game" type="category" width={120} />
+								<XAxis dataKey="_id" />
+								<YAxis />
 								<Tooltip />
-								<Legend />
-								<Bar dataKey="totalBet" name="Total Bet" fill="#10b981" />
-								<Bar dataKey="totalWin" name="Total Win" fill="#f59e0b" />
+								<Bar dataKey="totalBet" fill="#10b981" name="Total Bet" />
 							</BarChart>
 						</ResponsiveContainer>
+					) : (
+						<p className="text-gray-500 text-center mt-10">
+							No top terminals data.
+						</p>
 					)}
 				</div>
 			</div>
